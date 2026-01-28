@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Send to ChatGPT</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Send to ChatGPT</h1>
+      <p>
+        Send screenshots or selected text to <strong>ChatGPT</strong> instantly.
+      </p>
+      
+      <div class="shortcut-info">
+        <div><kbd>Ctrl+Shift+S</kbd> Screenshot</div>
+        <div><kbd>Ctrl+Shift+C</kbd> Selected text</div>
+      </div>
+      
+      <div class="buttons">
+        <button id="capture-button">📷 Send screenshot</button>
+        <button id="text-button">📝 Send selected text</button>
+      </div>
+      <div id="status"></div>
+    </div>
+    <script src="popup.js"></script>
+  </body>
+</html>
+
