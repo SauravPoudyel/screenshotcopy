@@ -8,21 +8,85 @@
   </head>
   <body>
     <div class="container">
-      <h1>Send to ChatGPT</h1>
-      <p>
-        Send screenshots or selected text to <strong>ChatGPT</strong> instantly.
-      </p>
-      
-      <div class="shortcut-info">
-        <div><kbd>Ctrl+Shift+S</kbd> Screenshot</div>
-        <div><kbd>Ctrl+Shift+C</kbd> Selected text</div>
+      <!-- Header -->
+      <div class="header">
+        <h1>⚡ ChatGPT Quick Send</h1>
+        <button id="settings-toggle" class="icon-btn" title="Settings">⚙️</button>
       </div>
-      
-      <div class="buttons">
-        <button id="capture-button">📷 Send screenshot</button>
-        <button id="text-button">📝 Send selected text</button>
+
+      <!-- Main Panel -->
+      <div id="main-panel">
+        <p class="subtitle">Send screenshots or text to ChatGPT instantly</p>
+        
+        <div class="buttons">
+          <button id="capture-button">
+            <span class="btn-icon">📷</span>
+            <span class="btn-text">Send Screenshot</span>
+          </button>
+          <button id="text-button">
+            <span class="btn-icon">📝</span>
+            <span class="btn-text">Send Selected Text</span>
+          </button>
+        </div>
+
+        <div class="shortcuts-display">
+          <div class="shortcut-row">
+            <span>Screenshot</span>
+            <kbd id="shortcut-screenshot">Ctrl+Shift+S</kbd>
+          </div>
+          <div class="shortcut-row">
+            <span>Selected Text</span>
+            <kbd id="shortcut-text">Ctrl+Shift+C</kbd>
+          </div>
+        </div>
+
+        <div id="status"></div>
       </div>
-      <div id="status"></div>
+
+      <!-- Settings Panel -->
+      <div id="settings-panel" class="hidden">
+        <h2>Settings</h2>
+        
+        <div class="setting-group">
+          <h3>⌨️ Keyboard Shortcuts</h3>
+          <p class="setting-desc">Customize your shortcuts in Chrome settings</p>
+          <button id="open-shortcuts" class="secondary-btn">
+            Open Shortcut Settings
+          </button>
+        </div>
+
+        <div class="setting-group">
+          <h3>🚀 Behavior</h3>
+          
+          <label class="toggle-setting">
+            <span>Auto-send after capture</span>
+            <input type="checkbox" id="auto-send" checked />
+            <span class="toggle-slider"></span>
+          </label>
+
+          <label class="toggle-setting">
+            <span>Show notifications</span>
+            <input type="checkbox" id="show-notifications" checked />
+            <span class="toggle-slider"></span>
+          </label>
+
+          <label class="toggle-setting">
+            <span>Switch to ChatGPT tab</span>
+            <input type="checkbox" id="switch-tab" checked />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="setting-group">
+          <h3>🎯 Target</h3>
+          <select id="target-url">
+            <option value="https://chatgpt.com/">ChatGPT (chatgpt.com)</option>
+            <option value="https://chat.openai.com/">ChatGPT (chat.openai.com)</option>
+          </select>
+        </div>
+
+        <button id="back-btn" class="secondary-btn">← Back</button>
+      </div>
     </div>
     <script src="popup.js"></script>
   </body>

@@ -1,17 +1,27 @@
 const STORAGE_KEY = "screenshot-queue";
 let uploading = false;
 
+// Global settings
+let currentSettings = {
+  autoSend: true,
+  showNotifications: true,
+  switchTab: true,
+  targetUrl: "https://chatgpt.com/"
+};
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "PING") {
     sendResponse({status: "ready"});
     return true;
   }
   if (message?.type === "UPLOAD_SCREENSHOT" && message?.dataUrl) {
+    if (message.settings) currentSettings = message.settings;
     enqueueScreenshot(message.dataUrl);
     sendResponse({status: "queued"});
     return true;
   }
   if (message?.type === "SEND_TEXT" && message?.text) {
+    if (message.settings) currentSettings = message.settings;
     sendTextToChatGPT(message.text);
     sendResponse({status: "text queued"});
     return true;
@@ -32,15 +42,20 @@ async function processQueue() {
   uploading = true;
   const screenshot = queue.shift();
   
-  showNotification("Uploading screenshot to ChatGPT...");
+  if (currentSettings.showNotifications) {
+    showNotification("Uploading screenshot to ChatGPT...");
+  }
   
   try {
     await uploadScreenshot(screenshot);
-    showNotification("Screenshot uploaded successfully!", "success");
+    if (currentSettings.showNotifications) {
+      showNotification("Screenshot uploaded successfully!", "success");
+    }
   } catch (error) {
     console.error("Screenshot upload failed:", error);
-    showNotification("Failed to upload screenshot. Check console for details.", "error");
-    // Put the screenshot back in the queue to retry later
+    if (currentSettings.showNotifications) {
+      showNotification("Failed to upload screenshot. Check console for details.", "error");
+    }
     queue.unshift(screenshot);
   }
   
@@ -120,9 +135,11 @@ async function uploadScreenshot(dataUrl) {
     
     console.log("File upload triggered successfully");
     
-    // Wait for the image to be processed, then click send
+    // Wait for the image to be processed, then click send if auto-send enabled
     await waitForImageUpload();
-    await clickSendButton();
+    if (currentSettings.autoSend) {
+      await clickSendButton();
+    }
     return;
   }
   
@@ -159,7 +176,9 @@ async function uploadScreenshot(dataUrl) {
         document.body.innerText.includes('screenshot.png')) {
       console.log("Drag-and-drop appears successful");
       await waitForImageUpload();
-      await clickSendButton();
+      if (currentSettings.autoSend) {
+        await clickSendButton();
+      }
       return;
     }
   }
@@ -271,7 +290,9 @@ async function waitForImageUpload(timeout = 5000) {
 async function sendTextToChatGPT(text) {
   console.log("Sending text to ChatGPT:", text.substring(0, 50) + "...");
   
-  showNotification("Sending text to ChatGPT...");
+  if (currentSettings.showNotifications) {
+    showNotification("Sending text to ChatGPT...");
+  }
   
   try {
     // Wait for the form to be ready
@@ -308,13 +329,19 @@ async function sendTextToChatGPT(text) {
     // Wait a moment for the UI to update
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    // Click send button
-    await clickSendButton();
+    // Click send button if auto-send enabled
+    if (currentSettings.autoSend) {
+      await clickSendButton();
+    }
     
-    showNotification("Text sent to ChatGPT!", "success");
+    if (currentSettings.showNotifications) {
+      showNotification("Text sent to ChatGPT!", "success");
+    }
   } catch (error) {
     console.error("Failed to send text:", error);
-    showNotification("Failed to send text: " + error.message, "error");
+    if (currentSettings.showNotifications) {
+      showNotification("Failed to send text: " + error.message, "error");
+    }
   }
 }
 

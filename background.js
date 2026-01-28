@@ -1,34 +1,58 @@
-const chatGptUrls = ["https://chatgpt.com/*", "https://chat.openai.com/*"];
+const defaultSettings = {
+  autoSend: true,
+  showNotifications: true,
+  switchTab: true,
+  targetUrl: "https://chatgpt.com/"
+};
 
 chrome.runtime.onInstalled.addListener(() => {
   console.log("Screenshot to ChatGPT extension installed.");
+  // Initialize default settings
+  chrome.storage.sync.get("settings", (data) => {
+    if (!data.settings) {
+      chrome.storage.sync.set({ settings: defaultSettings });
+    }
+  });
 });
 
-chrome.commands.onCommand.addListener((command) => {
+chrome.commands.onCommand.addListener(async (command) => {
+  const settings = await getSettings();
   if (command === "capture-screenshot") {
-    captureAndSendScreenshot("keyboard shortcut");
+    captureAndSendScreenshot("keyboard shortcut", settings);
   }
   if (command === "capture-text") {
-    captureAndSendText("keyboard shortcut");
+    captureAndSendText("keyboard shortcut", settings);
   }
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "CAPTURE_SCREENSHOT") {
-    captureAndSendScreenshot("popup button");
+    const settings = message.settings || defaultSettings;
+    captureAndSendScreenshot("popup button", settings);
     sendResponse({status: "capture queued"});
     return true;
   }
   if (message?.type === "CAPTURE_TEXT") {
-    captureAndSendText("popup button");
+    const settings = message.settings || defaultSettings;
+    captureAndSendText("popup button", settings);
     sendResponse({status: "text capture queued"});
     return true;
   }
 });
 
-async function captureAndSendScreenshot(reason) {
+async function getSettings() {
+  return new Promise((resolve) => {
+    chrome.storage.sync.get("settings", (data) => {
+      resolve(data.settings || defaultSettings);
+    });
+  });
+}
+
+async function captureAndSendScreenshot(reason, settings = defaultSettings) {
   try {
     console.log(`[Screenshot] Capturing screenshot (reason: ${reason})`);
+    console.log("[Screenshot] Settings:", settings);
+    
     const tabs = await chrome.tabs.query({active: true, currentWindow: true});
     if (!tabs.length) {
       console.warn("[Screenshot] No active tab to capture.");
@@ -43,7 +67,7 @@ async function captureAndSendScreenshot(reason) {
     console.log(`[Screenshot] Screenshot captured, size: ${screenshot.length} bytes`);
     console.log("[Screenshot] Ensuring ChatGPT tab is available...");
     
-    const tabId = await ensureChatGptTab();
+    const tabId = await ensureChatGptTab(settings);
     if (typeof tabId !== "number") {
       console.warn("[Screenshot] Could not open ChatGPT tab.");
       return;
@@ -60,7 +84,8 @@ async function captureAndSendScreenshot(reason) {
         const response = await chrome.tabs.sendMessage(tabId, {
           type: "UPLOAD_SCREENSHOT",
           dataUrl: screenshot,
-          reason
+          reason,
+          settings
         });
         console.log("[Screenshot] Screenshot queued successfully:", response);
         break;
@@ -71,7 +96,6 @@ async function captureAndSendScreenshot(reason) {
         if (attempts < maxAttempts) {
           console.log("[Screenshot] Retrying in 1 second...");
           await new Promise(resolve => setTimeout(resolve, 1000));
-          // Try to inject the content script again
           await ensureContentScriptInjected(tabId);
         } else {
           console.error("[Screenshot] Failed to send screenshot after", maxAttempts, "attempts");
@@ -84,9 +108,11 @@ async function captureAndSendScreenshot(reason) {
   }
 }
 
-async function captureAndSendText(reason) {
+async function captureAndSendText(reason, settings = defaultSettings) {
   try {
     console.log(`[Text] Capturing selected text (reason: ${reason})`);
+    console.log("[Text] Settings:", settings);
+    
     const tabs = await chrome.tabs.query({active: true, currentWindow: true});
     if (!tabs.length) {
       console.warn("[Text] No active tab.");
@@ -109,7 +135,7 @@ async function captureAndSendText(reason) {
     console.log(`[Text] Selected text: "${selectedText.substring(0, 50)}..."`);
     console.log("[Text] Ensuring ChatGPT tab is available...");
     
-    const tabId = await ensureChatGptTab();
+    const tabId = await ensureChatGptTab(settings);
     if (typeof tabId !== "number") {
       console.warn("[Text] Could not open ChatGPT tab.");
       return;
@@ -126,7 +152,8 @@ async function captureAndSendText(reason) {
         const response = await chrome.tabs.sendMessage(tabId, {
           type: "SEND_TEXT",
           text: selectedText,
-          reason
+          reason,
+          settings
         });
         console.log("[Text] Text sent successfully:", response);
         break;
@@ -148,23 +175,30 @@ async function captureAndSendText(reason) {
   }
 }
 
-async function ensureChatGptTab() {
+async function ensureChatGptTab(settings = defaultSettings) {
   // Check both chatgpt.com and chat.openai.com
+  const chatGptUrls = ["https://chatgpt.com/*", "https://chat.openai.com/*"];
   const tabs = await chrome.tabs.query({url: chatGptUrls});
+  
   if (tabs.length) {
-    console.log("[Screenshot] Found existing ChatGPT tab:", tabs[0].id, tabs[0].url);
-    // Make sure content script is injected
+    console.log("[ChatGPT] Found existing tab:", tabs[0].id, tabs[0].url);
     await ensureContentScriptInjected(tabs[0].id);
-    // Switch to the tab
-    await chrome.tabs.update(tabs[0].id, {active: true});
+    
+    // Switch to tab if setting enabled
+    if (settings.switchTab) {
+      await chrome.tabs.update(tabs[0].id, {active: true});
+    }
     return tabs[0].id;
   }
-  console.log("[Screenshot] No ChatGPT tab found, creating new one...");
-  // Use the new chatgpt.com URL
-  const created = await chrome.tabs.create({url: "https://chatgpt.com/", active: true});
-  console.log("[Screenshot] Waiting for ChatGPT tab to load...");
+  
+  console.log("[ChatGPT] No tab found, creating new one...");
+  const targetUrl = settings.targetUrl || "https://chatgpt.com/";
+  const created = await chrome.tabs.create({url: targetUrl, active: settings.switchTab});
+  
+  console.log("[ChatGPT] Waiting for tab to load...");
   await waitForTabLoad(created.id);
-  console.log("[Screenshot] ChatGPT tab loaded, injecting content script...");
+  
+  console.log("[ChatGPT] Tab loaded, injecting content script...");
   await ensureContentScriptInjected(created.id);
   return created.id;
 }
